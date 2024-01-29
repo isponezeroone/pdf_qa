@@ -1,7 +1,10 @@
 import os
+import sys
+from typing import Optional
 
 import faiss
 from dotenv import load_dotenv
+from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import OnlinePDFLoader
 from langchain_community.embeddings import (HuggingFaceEmbeddings,
@@ -42,6 +45,7 @@ def format_docs(docs):
     """
     return "\n\n".join(doc.page_content for doc in docs)
 
+
 def extract_embeddings(splits: list, device: str) -> VectorStoreRetriever:
     """
     Extract embeddings
@@ -66,6 +70,7 @@ def extract_embeddings(splits: list, device: str) -> VectorStoreRetriever:
     retriever = vectorstore.as_retriever(search_type="similarity",
                                          search_kwargs={"k": 5})
     return retriever
+
 
 def extract_embeddings_inference_api(splits: list,
                                      device: str) -> VectorStoreRetriever:
@@ -97,6 +102,7 @@ def extract_embeddings_inference_api(splits: list,
 
     return retriever
 
+
 def get_model_path_from_directory(directory_path: str) -> Optional[str]:
     """
     Get model path from directory
@@ -119,3 +125,23 @@ def get_model_path_from_directory(directory_path: str) -> Optional[str]:
     else:
         print("Error: There must be exactly one file in the folder.")
         sys.exit()
+
+
+def create_prompt() -> PromptTemplate:
+    """
+    Creating a prompt
+    Returns:
+    - PromptTemplate: A prompt template for a language model.
+    """
+    prompt_template = """Use the following pieces of context to answer
+    the question at the end.
+    If you don't know the answer,
+    just say "No data to answer the question."
+        Context: {context}
+        Question: {question}
+        Answer:"""
+
+    rag_prompt = PromptTemplate(template=prompt_template,
+                                input_variables=["context", "question"])
+
+    return rag_prompt
