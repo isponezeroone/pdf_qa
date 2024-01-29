@@ -1,5 +1,13 @@
+import os
+
+import faiss
+from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import OnlinePDFLoader
+from langchain_community.embeddings import (HuggingFaceEmbeddings,
+                                            HuggingFaceInferenceAPIEmbeddings)
+from langchain_community.vectorstores.faiss import FAISS
+from langchain_core.vectorstores import VectorStoreRetriever
 
 
 def read_pdf(pdf_link: str) -> list:
@@ -33,3 +41,58 @@ def format_docs(docs):
     of all documents, separated by two newline characters.
     """
     return "\n\n".join(doc.page_content for doc in docs)
+
+def extract_embeddings(splits: list, device: str) -> VectorStoreRetriever:
+    """
+    Extract embeddings
+
+    Parameters:
+    - splits (list): A list containing the document split into parts.
+    - device (str): The device performing the embeddings (cpu or gpu).
+
+    Returns:
+    - VectorStoreRetriever: Base Retriever class for VectorStore.
+    """
+
+    if device == 'gpu':
+        model_kwargs = {'device': 'cuda'}
+    elif device == 'cpu':
+        model_kwargs = {'device': 'cpu'}
+
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L12-v2",
+        model_kwargs=model_kwargs)
+    vectorstore = FAISS.from_documents(documents=splits, embedding=embeddings)
+    retriever = vectorstore.as_retriever(search_type="similarity",
+                                         search_kwargs={"k": 5})
+    return retriever
+
+def extract_embeddings_inference_api(splits: list,
+                                     device: str) -> VectorStoreRetriever:
+    """
+    Extract embeddings using HuggingFace API
+
+    Parameters:
+    - splits (list): A list containing the document split into parts.
+    - device (str): The device performing the embeddings (cpu or gpu).
+
+    Returns:
+    - VectorStoreRetriever: Base Retriever class for VectorStore.
+    """
+    # Loading environment variables from the .env file
+    load_dotenv()
+
+    embeddings = HuggingFaceInferenceAPIEmbeddings(
+        api_key=os.getenv("HF_API_KEY"),
+        model_name="sentence-transformers/all-MiniLM-L12-v2")
+    vectorstore = FAISS.from_documents(documents=splits, embedding=embeddings)
+    if device == 'gpu':
+        resources = faiss.StandardGpuResources()
+        vectorstore.index = faiss.index_cpu_to_gpu(resources, 0,
+                                                   vectorstore.index)
+    elif device == 'cpu':
+        pass
+    retriever = vectorstore.as_retriever(search_type="similarity",
+                                         search_kwargs={"k": 5})
+
+    return retriever
