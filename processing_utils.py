@@ -96,3 +96,26 @@ def extract_embeddings_inference_api(splits: list,
                                          search_kwargs={"k": 5})
 
     return retriever
+
+def get_model_path_from_directory(directory_path: str) -> Optional[str]:
+    """
+    Get model path from directory
+    Parameters:
+    - directory_path (str): The path to the directory
+    where the model file is located.
+
+    Returns:
+    - str: The path to the model.
+    """
+    files = os.listdir(directory_path)
+
+    files = [
+        f for f in files if os.path.isfile(os.path.join(directory_path, f))
+    ]
+
+    if len(files) == 1:
+        file_path = os.path.join(directory_path, files[0])
+        return file_path
+    else:
+        print("Error: There must be exactly one file in the folder.")
+        sys.exit()
